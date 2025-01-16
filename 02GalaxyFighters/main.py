@@ -1,6 +1,13 @@
 import pygame
 
+pygame.font.init()
+pygame.mixer.init()
+
 WIDTH, HEIGHT = 1000, 700
+FONT = pygame.font.SysFont("comicsans", 35)
+
+BULLET_HIT_SOUND = pygame.mixer.Sound("Assets/Grenade+1.mp3")
+BULLET_FIRE_SOUND = pygame.mixer.Sound("Assets/Gun+Silencer.mp3")
 
 YELLOW_HIT = pygame.USEREVENT + 1
 RED_HIT = pygame.USEREVENT + 2
@@ -14,6 +21,7 @@ YELLOW_SPACESHIP_IMAGE = pygame.image.load("Assets/spaceship_yellow.png")
 YELLOW_SPACESHIP = pygame.transform.rotate(pygame.transform.scale(YELLOW_SPACESHIP_IMAGE, (SPACESHIP_WIDTH, SPACESHIP_HEIGHT)), 90)
 RED_SPACESHIP_IMAGE = pygame.image.load("Assets/spaceship_red.png")
 RED_SPACESHIP = pygame.transform.rotate(pygame.transform.scale(RED_SPACESHIP_IMAGE, (SPACESHIP_WIDTH, SPACESHIP_HEIGHT)), 270)
+SPACE = pygame.transform.scale((pygame.image.load("Assets/space.jpg")), (WIDTH, HEIGHT))
 BORDER = pygame.Rect(WIDTH//2 - 5, 0, 10, HEIGHT)
 
 FPS = 60
@@ -55,16 +63,33 @@ def handle_bullets(yellow_bullets, red_bullets, yellow, red):
         if red.colliderect(bullet):
             pygame.event.post(pygame.event.Event(RED_HIT))
             yellow_bullets.remove(bullet)
+        elif bullet.x > WIDTH:
+            yellow_bullets.remove(bullet)
 
     for bullet in red_bullets:
         bullet.x -= BULLET_VEL
         if yellow.colliderect(bullet):
             pygame.event.post(pygame.event.Event(YELLOW_HIT))
             red_bullets.remove(bullet)
+        elif bullet.x < 0:
+            red_bullets.remove(bullet)
 
-def draw(yellow, red, yellow_bullets, red_bullets):
-    WIN.fill(("cyan")) # diplay bg color
+def draw_winner(text):
+    WIN.blit(SPACE, (0, 0)) #bg image
+    mytext = FONT.render(text, 1, "white")
+    WIN.blit(mytext, (WIDTH/2 - mytext.get_width()/2, HEIGHT/2 - mytext.get_height()/2))
+    pygame.display.update()
+    pygame.time.delay(5000)
+
+def draw(yellow, red, yellow_bullets, red_bullets, yellow_health, red_health):
+    WIN.blit(SPACE, (0, 0)) #bg image
     pygame.draw.rect(WIN, ("black"), BORDER)  # seperating the two halves
+
+    red_health_text = FONT.render("Health: " + str(red_health), 1, "white")
+    yellow_health_text = FONT.render("Health: " + str(yellow_health), 1, "white")
+    WIN.blit(red_health_text, (WIDTH - red_health_text.get_width() - 10, 10))
+    WIN.blit(yellow_health_text, (10, 10))
+
     WIN.blit(YELLOW_SPACESHIP, (yellow.x, yellow.y))
     WIN.blit(RED_SPACESHIP, (red.x, red.y))
 
@@ -84,6 +109,9 @@ def main():
     red_bullets = []
     yellow_bullets = []
 
+    red_health = 10
+    yellow_health = 10
+
     clock = pygame.time.Clock()
     run = True 
     while run:
@@ -91,17 +119,42 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+                pygame.quit()
             
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_x and len(yellow_bullets) < MAX_BULLETS:
                     bullet = pygame.Rect(yellow.x + yellow.width - 3, yellow.y + yellow.height//2 - 2.5, 10, 5)
                     yellow_bullets.append(bullet)
-                    
-
+                    BULLET_FIRE_SOUND.play()
 
                 if event.key == pygame.K_SLASH and len(red_bullets) < MAX_BULLETS:
                     bullet = pygame.Rect(red.x + 3, red.y + red.height//2 - 2.5, 10, 5)
                     red_bullets.append(bullet)
+                    BULLET_FIRE_SOUND.play()
+
+            if event.type == RED_HIT:   
+                # print("Red Hit")
+                red_health -= 1
+                BULLET_HIT_SOUND.play()
+
+            if event.type == YELLOW_HIT:
+                # print("Yellow Hit") 
+                yellow_health -= 1
+                BULLET_HIT_SOUND.play()
+                
+        winner_text = " "
+        if red_health <= 0:
+            winner_text = "Yellow Wins!"
+
+        if yellow_health <= 0:
+            winner_text = "Red Wins!"
+            
+        if yellow_health == 0 and red_health == 0:
+            winner_text = "It's a Tie!"
+            
+        if winner_text != " ":
+            draw_winner(winner_text)
+            break
 
         keys_pressed = pygame.key.get_pressed()
         yellow_handle_movement(keys_pressed, yellow)
@@ -109,10 +162,10 @@ def main():
 
         handle_bullets(yellow_bullets, red_bullets, yellow, red)
         
-        draw(yellow, red, yellow_bullets, red_bullets) 
+        draw(yellow, red, yellow_bullets, red_bullets, yellow_health, red_health) 
         
 
-    pygame.quit()
+    main()
 
 if __name__ == "__main__":
     main()
