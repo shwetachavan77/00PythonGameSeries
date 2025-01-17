@@ -1,11 +1,15 @@
 import pygame, os, time, random
 
 pygame.font.init()
+pygame.mixer.init()
 
 WIDTH, HEIGHT = 1000, 700
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 
 pygame.display.set_caption("Laser Blaster")
+
+BULLET_HIT_SOUND = pygame.mixer.Sound("Assets/Grenade+1.mp3")
+BULLET_FIRE_SOUND = pygame.mixer.Sound("Assets/Gun+Silencer.mp3")
 
 # SpaceShips
 YELLOW_SPACE_SHIP = pygame.image.load("Assets/pixel_ship_yellow.png")
@@ -46,6 +50,7 @@ class Ship:
                 self.lasers.remove(laser)
             elif laser.collision(obj):
                 obj.health -= 10
+                BULLET_HIT_SOUND.play()
                 self.lasers.remove(laser)
 
     def get_width(self):
@@ -89,10 +94,10 @@ class Player(Ship):
     def draw(self, window):
         super().draw(window)
         self.healthbar(window)
-        
+
     def healthbar(self, window):
-        pygame.draw.rect(WIN, (255, 0, 0), (self.x, self.y - 50, self.health, 10))
-        pygame.draw.rect(WIN, (0, 255, 0), (self.x, self.y - 50, self.health/self.max_health * WIDTH, 10))
+        pygame.draw.rect(WIN, (255, 0, 0), (self.x, self.y + self.ship_img.get_height() + 10, self.ship_img.get_width(), 10))
+        pygame.draw.rect(WIN, (0, 255, 0), (self.x, self.y + self.ship_img.get_height() + 10, self.ship_img.get_width()*(self.health/self.max_health), 10))
 
 class Enemy(Ship):
     COLOR_MAP = {
@@ -153,7 +158,7 @@ def main():
     lost_count = 0
     font = pygame.font.SysFont("comicsans", 40)
 
-    player = Player(WIDTH//2 - 25, 600)
+    player = Player(WIDTH//2 - 25, 550)
 
     def redraw_window():
         WIN.blit(BG, (0, 0))
@@ -206,11 +211,12 @@ def main():
             player.x += player_vel
         if (keys[pygame.K_UP] and player.y - player_vel > 0) or (keys[pygame.K_w] and player.y - player_vel > 0): #UP
             player.y -= player_vel
-        if (keys[pygame.K_DOWN] and player.y + player_vel + player.get_height() < HEIGHT) or (keys[pygame.K_s] and player.y + player_vel + player.get_height() < HEIGHT): #DOWN
+        if (keys[pygame.K_DOWN] and player.y + player_vel + player.get_height() + 15 < HEIGHT) or (keys[pygame.K_s] and player.y + player_vel + player.get_height() + 15 < HEIGHT): #DOWN
             player.y += player_vel
 
         if keys[pygame.K_SPACE]:
             player.shoot()
+            BULLET_FIRE_SOUND.play()
 
         for enemy in enemies[:]:
             enemy.move(enemy_vel)
@@ -220,6 +226,7 @@ def main():
 
             if collide(enemy, player):
                 player.health -= 10
+                BULLET_HIT_SOUND.play()
                 enemies.remove(enemy)
             elif enemy.y + enemy.get_height() > HEIGHT:
                 lives -= 1
@@ -231,6 +238,26 @@ def main():
         player.move_lasers(-laser_vel, enemies)
 
         
+def main_menu():
+    title_font = pygame.font.SysFont("comicsans", 70)
+    subtitle_font = pygame.font.SysFont("comicsans", 40)
+    run = True
+    while run:
+        WIN.blit(BG, (0, 0))
+        title_text = title_font.render("Laser Blasters", 1, (255, 255, 255))
+        subtitle_text = subtitle_font.render("Click to begin", 1, (255, 255, 255))
+        WIN.blit(title_text, (WIDTH/2 - title_text.get_width()/2, HEIGHT/2 - title_text.get_height()/2))
+        WIN.blit(subtitle_text, (WIDTH/2 - subtitle_text.get_width()/2, HEIGHT/2 + 150))
+
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                main()
+
+    pygame.quit()
 
 if __name__ == "__main__":
-    main()
+    main_menu()
